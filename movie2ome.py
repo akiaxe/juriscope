@@ -22,8 +22,8 @@ compression_type = "raw"  # or "tiff_lzw" for lossless compression or "raw" for 
 
 user_channel_colors = {
     0: "#FFFFFFFF", # white for greyscale
-    1: "#00FFFFFF", 
-    2: "#FFFF00FF", 
+    1: "#FFFF00FF",  
+    2: "#00FFFFFF", 
     3: "#FF0000FF"    
 }
 

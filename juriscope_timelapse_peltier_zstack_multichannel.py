@@ -11,13 +11,13 @@ import os
 load_previous_positions=0 # 1 to load previous positions you have already selected
                           # 0 to choose new positions for samples
 
-main_folder='/home/jb2547/data/20250902' # Give the file directory you are saving to
+main_folder='/home/ahm50/data/18_9_25' # Give the file directory you are saving to
 
-objective=20 # Set either 20 or 40 for which objective is being used
+objective=40 # Set either 20 or 40 for which objective is being used
 
 samples=2 #How many wells/capillaries do you have
 
-sample_names=['no enzyme','w enzyme']
+sample_names=['BOH_2u_anch','AOH_BOH_2u_anch']
 
 z_stack=1# Say if a z stack is being used; 1=yes, 0= not
 timelapse=1 # say if you want time lapse on; 1=yes, 0= not
@@ -25,15 +25,15 @@ timelapse=1 # say if you want time lapse on; 1=yes, 0= not
 auto_focus=1 # Say if you want autofocus ON or OFF
 
 
-z_c_order='zc'  # zc -  Does all channels in each z first before moving to the next z value -- should be more precise
-                # cz -  Does all z values per channel before moving to the next channel --- should be faster
+z_c_order='cz'  # zc -  In single z-stack, does all channels then moves to next z_stack -- should be faster
+                # cz -  In single c, does all z_stack and moves to next c --- should be more precise
 
 ##################################### time range
 
-interval=np.array([3,6]) # interval time between imaging cycles in minutes
+interval=np.array([15,30]) # interval time between imaging cycles in minutes
 
 
-interval_time=np.array([9,18]) #  total time for each interval in min, same order as interval
+interval_time=np.array([18,30]) #  total time for each interval in min, same order as interval
 
 interval_time=interval_time*60 # This is for interval_time in hrs.
                                # If using in minutes, comment out.
@@ -41,7 +41,7 @@ interval_time=interval_time*60 # This is for interval_time in hrs.
 ## Further intervals can be added
 
 ################################### z step range
-z_range=1 # +- this number, e.g. if it is 20, it is -20Âµm to +20 Âµm
+z_range=3 # +- this number, e.g. if it is 20, it is -20Âµm to +20 Âµm
 z_step=1 # step size between z range, i.e. if z_range is 20 and z_step is 1, you would have 41 slices
 
 ## Temperature and heating time
@@ -53,7 +53,7 @@ heating_time = "0:0:1" # h:m:s
 
 #### Peltier temperature variables
 
-peltier=1 # say if you want peltier on; 1=yes, 0=not
+peltier=0 # say if you want peltier on; 1=yes, 0=not
 
 pelt_start_temp=30
 pelt_end_temp=20
@@ -76,9 +76,9 @@ pelt_wait_time=[4200,30,10,5] # wait time for peltier in minutes.
 ################################## Illumination 
 
 
-illumination=[0x20,0x80] # change depending on which channel is being used
-illum_expose=[10000,100000] # change depending on exposure time for each channel
-laser_pwr=[0.4,1] # change depending on the laser power wanted, between 0 and 1
+illumination=[0x01,0x40,0x20,0x80] # change depending on which channel is being used
+illum_expose=[10000, 100000, 100000, 100000] # change depending on exposure time for each channel
+laser_pwr=[1,1,1,1] # change depending on the laser power wanted, between 0 and 1
 
 ##Specify illumination setting
 #first: define the illumination channel that you want to use:
@@ -1021,4 +1021,6 @@ with open(f"{main_folder}/timestamp.csv", mode="w", newline="") as file:
         writer.writerow([item])  # each item on a new row
 
 print(f"timestamp export complete")
+
+
 
