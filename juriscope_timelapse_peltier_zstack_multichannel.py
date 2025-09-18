@@ -34,7 +34,8 @@ interval=np.array([3,6]) # interval time between imaging cycles in minutes
 
 interval_time=np.array([9,18]) #  total time for each interval in min, same order as interval
 
-#interval_time=interval_time*60 ## Remove this if you are running in minutes
+interval_time=interval_time*60 # This is for interval_time in hrs.
+                               # If using in minutes, comment out.
 
 ## Further intervals can be added
 
@@ -66,7 +67,7 @@ pelt_return=1 # Set: 0 -> Only goes from pelt_start_temp to pelt_end_temp in pel
 pelt_time_temp_threshold=[29,28,27] # Cutoff temperature where the pelt_wait_time moves to the next wait time sequence
                                     # if only singular heating time interval used, let this be: []
                                     
-pelt_wait_time=[4200,30,10,5] # wait time for peltier in seconds. 
+pelt_wait_time=[4200,30,10,5] # wait time for peltier in minutes. 
                               # SHOULD BE: length should be: len(pelt_time_temp_threshold) +1
                               # if only singular heating time interval, should only be 1 interval number and not list
 
