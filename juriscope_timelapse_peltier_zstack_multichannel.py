@@ -8,6 +8,9 @@ import os
 
 ################################## CHANGE EVERYTHING IN THIS SECTION ######################
 
+load_previous_positions=0 # 1 to load previous positions you have already selected
+                          # 0 to choose new positions for samples
+
 main_folder='/home/jb2547/data/20250902' # Give the file directory you are saving to
 
 objective=20 # Set either 20 or 40 for which objective is being used
@@ -26,7 +29,7 @@ z_c_order='zc'  # zc -  Does all channels in each z first before moving to the n
 
 ##################################### time range
 
-interval=np.array([3,6]) # interval time beteen imaging cycles in minutes
+interval=np.array([3,6]) # interval time between imaging cycles in minutes
 
 
 interval_time=np.array([9,18]) #  total time for each interval in min, same order as interval
@@ -54,10 +57,18 @@ pelt_start_temp=30
 pelt_end_temp=20
 pelt_step=-1
 
-pelt_temp_list=list(range(pelt_start_temp, pelt_end_temp - 1, pelt_step))
+pelt_initial_heat_time=30 # how long the initial heating of the first temp lasts for before imaging begins in seconds
+
+pelt_return=1 # Set: 0 -> Only goes from pelt_start_temp to pelt_end_temp in pelt_step
+              #      1 -> Goes from pelt_start_temp to pelt_end_temp and goes back to pelt_start_temp in pelt_step
+
 
 pelt_time_temp_threshold=[29,28,27] # Cutoff temperature where the pelt_wait_time moves to the next wait time sequence
-pelt_wait_time=[4200,30,10,5] # wait time for peltier. Should be threshold +1
+                                    # if only singular heating time interval used, let this be: []
+                                    
+pelt_wait_time=[4200,30,10,5] # wait time for peltier in seconds. 
+                              # SHOULD BE: length should be: len(pelt_time_temp_threshold) +1
+                              # if only singular heating time interval, should only be 1 interval number and not list
 
 
 ################################## Illumination 
@@ -96,6 +107,15 @@ elif objective==40:
 
 
 ########### Set peltier array
+
+if pelt_return==0:
+    pelt_temp_list=list(range(pelt_start_temp, pelt_end_temp - 1, pelt_step))
+elif pelt_return==1:
+    pelt_up=list(range(pelt_start_temp, pelt_end_temp - 1, pelt_step))
+    pelt_down=list(range( pelt_end_temp, pelt_start_temp - 1, -pelt_step))
+    pelt_temp_list = pelt_up + pelt_down
+
+
 assert len(pelt_wait_time) == len(pelt_time_temp_threshold) + 1 # check if pelt wait time matches threshold
 
 pelt_wait_schedule = []
@@ -107,6 +127,23 @@ for temp in pelt_temp_list:
     else:
         # If no threshold matched (i.e., temp <= all thresholds)
         pelt_wait_schedule.append(pelt_wait_time[-1])
+        
+########### Name mapping for illumination
+
+# Channel mapping: hex value -> wavelength string
+illumination_map = {
+    0x01: "475 nm (BF)",
+    0x02: "528 nm (BF)",
+    0x04: "625 nm (BF)",
+    0x08: "655 nm (BF)",
+    0x10: "385 nm (Fluo)",
+    0x20: "475 nm (Fluo)",
+    0x40: "528 nm (Fluo)",
+    0x80: "625 nm (Fluo)",
+}
+
+# Translate hex values into wavelengths
+illumination_names = [illumination_map[val] for val in illumination]
 
 ############# initialise timestamp list
 timestamp=[]
@@ -257,7 +294,7 @@ def script_print_move(vec):
     script_send_command("\t</microscopeone>\n", False)
 
 
-def peltier_temp(pelt_temp,pelt_idx):
+def peltier_temp(pelt_temp,pelt_wait):
     script_send_command("\t<microscopeone>\n", False)
     script_send_command('\t\t<pwr number="0">\n', False)
     script_send_command("\t\t\t<feedback>\n", False)
@@ -266,10 +303,9 @@ def peltier_temp(pelt_temp,pelt_idx):
     script_send_command("\t\t\t</feedback>\n", False)
     script_send_command("\t\t</pwr>\n", False)
     script_send_command("\t</microscopeone>\n", False)
-    if pelt_idx==0:
-        time.sleep(30)
-    else:
-        time.sleep(1)
+    
+    time.sleep(pelt_wait)
+
 
 
 # Function to tell the microscope to go in resting mode, pull fully down the objective and fully up the condeser, no pfs
@@ -349,9 +385,10 @@ def script_print_sample(filename, positions, number):
     script_send_command("\t</camera>\n", False)
 
     ## Turn on metadata for environment
-    #script_send_command("\t<microscopeone>\n", False)
-    #script_send_command("\t\t<record>ON</record>\n", True)
-    #script_send_command("\t</microscopeone>\n\n", False)
+    if peltier == 1 and timelapse == 1:
+        script_send_command("\t<microscopeone>\n", False)
+        script_send_command("\t\t<record>ON</record>\n", True)
+        script_send_command("\t</microscopeone>\n\n", False)
 
     ## Move and acquire image
     #script_send_command("\t<!-- Move to a position and acquire images -->\n", False)
@@ -474,9 +511,10 @@ def script_print_sample(filename, positions, number):
     script_send_command("\t</camera>\n", False)
 
     # metadata record off
-    #script_send_command("\t<microscopeone>\n", False)
-    #script_send_command("\t\t<record>OFF</record>\n", True)
-    #script_send_command("\t</microscopeone>\n\n", False)
+    if peltier == 1 and timelapse == 1:
+        script_send_command("\t<microscopeone>\n", False)
+        script_send_command("\t\t<record>OFF</record>\n", True)
+        script_send_command("\t</microscopeone>\n\n", False)
 	
 
 
@@ -487,44 +525,45 @@ script_send_command(b"<temika>", False) #n.b. keep temika open at all times othe
 
 
 ## If loading positions data, comment out from here
-'''
-print("p -- Save position\nu -- undo last capillary\nf -- Finish capillary\n")
-i = 0 # counter for how many capillaries/wells I am looking at
-number = [0] # number of positions in a given capillary/well
-positions = [] # stores all positions as a list, every 4 numbers are a position set
-while i < samples:
-    key = input() # wait for the user to press a key
 
-    # save the current position
-    if key == 'p':
-        vec = script_get_position() # obtains current position of the microscope
-        number[i] += 1 # for a capillary/well, how many positions are being chosen
-        positions.append(vec) # saves the positions
-        print("capillary/well", i, vec) # prints what has been chosen
+if load_previous_positions==0:
+    print("p -- Save position\nu -- undo last capillary\nf -- Finish capillary\n")
+    i = 0 # counter for how many capillaries/wells I am looking at
+    number = [0] # number of positions in a given capillary/well
+    positions = [] # stores all positions as a list, every 4 numbers are a position set
+    while i < samples:
+        key = input() # wait for the user to press a key
 
-    #undo last saved position
-    elif key == 'u':
-        if number[i] > 0:
-            number[i] -= 1 
-            removed_vec=positions.pop() #removes last vector which was saved
-            print("Last position removed from capillary/well",i,removed_vec)
+        # save the current position
+        if key == 'p':
+            vec = script_get_position() # obtains current position of the microscope
+            number[i] += 1 # for a capillary/well, how many positions are being chosen
+            positions.append(vec) # saves the positions
+            print("capillary/well", i, vec) # prints what has been chosen
 
-    #finalise positions for the current well
-    elif key == 'f':
-        number.append(0)
-        i += 1
-        print("p -- Save position\nf -- Finish capillary\n")
+        #undo last saved position
+        elif key == 'u':
+            if number[i] > 0:
+                number[i] -= 1 
+                removed_vec=positions.pop() #removes last vector which was saved
+                print("Last position removed from capillary/well",i,removed_vec)
+
+        #finalise positions for the current well
+        elif key == 'f':
+            number.append(0)
+            i += 1
+            print("p -- Save position\nf -- Finish capillary\n")
 
 
-with open(f"{main_folder}/position_data.pkl", "wb") as f:
-    pickle.dump((number, positions), f)
-print("Positions saved")
-'''
+    with open(f"{main_folder}/position_data.pkl", "wb") as f:
+        pickle.dump((number, positions), f)
+    print("Positions saved")
 
-#### Use this to load all positions data after an error. Make sure to comment out the bits above
-with open(f"{main_folder}/position_data.pkl", "rb") as f:
-    number, positions = pickle.load(f)
-    print("Loaded data:", number, positions)
+elif load_previous_positions==1:
+    #### Use this to load all positions data after an error. Make sure to comment out the bits above
+    with open(f"{main_folder}/position_data.pkl", "rb") as f:
+        number, positions = pickle.load(f)
+        print("Loaded data:", number, positions)
 
 
 
@@ -545,17 +584,46 @@ while i < samples:
 
 print(f'Check all settings')
 
-print(f'z stack = {z_stack}')
-print(f'z range = {z_range}')
-print(f'z step = {z_step}')
+print(f'Save folder: {main_folder}')
 
-print(f'Peltier = {peltier}')
-print(f'Enclosure = {enclosure_heating}')
+print(f'Sample names: {sample_names}')
 
-print(f'timelapse = {timelapse}')
-print(f'time interval (mins) = {interval}')
-print(f'Duration per interval (mins) = {interval_time}')
-print(f'Duration per interval (hrs) = {interval_time/60}')
+print(f'Channels and order: {', '.join(illumination_names)}')
+print(f'Illumination Power: {laser_pwr}')
+print(f'Exposure time: {illum_expose}')
+
+print(f"z stack : {'Yes' if z_stack else 'No'}")
+
+if z_stack==1:
+    print(f'z range = {z_range}')
+    print(f'z step = {z_step}')
+    
+    print(f'zc order: {z_c_order}')
+
+print(f'Peltier = : {'Yes' if peltier else 'No'}"')
+
+if peltier==1:
+    print(f'Pelt start temp = {pelt_start_temp}')
+    print(f'Pelt end temp = {pelt_end_temp}')
+    print(f'Pelt temp step = {pelt_step}')
+    
+    print(f'Pelt temp array = {pelt_temp_list}')
+    print(f'Cut-off temperatures for waiting are: {pelt_time_temp_threshold}')
+    print(f'Interval time per cutt-off temperature range: {pelt_wait_time}')
+    
+    print(f'Heating time to reach 1st temperature: {pelt_initial_heat_time}s')
+
+if enclosure_heating==1:
+    print(f'Enclosure temp = {temperature_enclosure}')
+
+print(f'timelapse = : {'Yes' if timelapse else 'No'}"')
+
+if timelapse==1:
+    print(f'time interval (mins) = {interval}')
+    print(f'Duration per interval (mins) = {interval_time}')
+    print(f'Duration per interval (hrs) = {interval_time/60}')
+    
+    
 
 total_time=sum(interval_time)
 
@@ -606,6 +674,7 @@ if enclosure_heating==1:
         hours, mins = divmod(mins, 60)
         print(f"\rTime remaining: {hours:02}:{mins:02}:{secs:02}", end="")
         time.sleep(1)
+    print("\rTime remaining: 00:00:00")
 
     print("\nHeating complete. Imaging Start.")
     print('------------------------------------------------------------------')
@@ -617,46 +686,42 @@ if timelapse==1:
 
 
     current_timestamp=[] # counter for timestamp
-    counter=[] # counter for iteration used
+
     current_timestamp=0
-    counter=0
+
 
     overall_start_time=time.time()
     
     if peltier==1:
-
-
-        pelt_idx=0
+        
+        peltier_temp(pelt_temp_list[0], pelt_initial_heat_time)
+        
+        pelt_time=[] # counter for peltier time interval
+        pelt_time=0
+        ptc=0 # counter for pelt_Wait_schedule
+        pelt_idx=0 # index for pelt_temp_list
+        
         for interval_count in range(len(num_iterations)):
                 for iteration in range(num_iterations[interval_count]):
 
-                    if interval_count == 0 and iteration==0:
-                        current_timestamp=0 # counter for timestamp
-                    else:
-                        current_timestamp=np.round((current_timestamp+(interval[interval_count]*60))).astype(int)
-                    
-                    #print(iteration)
-                    #print(interval_count)
-                    counter+=1
+                    if not (interval_count == 0 and iteration == 0):
+                        current_timestamp = int(round(current_timestamp + interval[interval_count] * 60))
+                        pelt_time = int(round(pelt_time + interval[interval_count] * 60))
+                        
                     index=0
-
-                    ptc=0
-                    peltier_temp(pelt_temp_list[ptc], pelt_idx)
-                    pelt_idx +=1
-                    pelt_wait=pelt_wait_time[ptc]
-
-                    
 
                     start_time=time.time() # start of when imaging takes place
 
-                    pwc=0
-
-                    if current_timestamp==pelt_wait:
-                        ptc += 1
-                        pwc += 1
-                        peltier_temp(pelt_temp_list[ptc], pelt_idx)
+                    if pelt_idx==0:
+                        peltier_temp(pelt_temp_list[pelt_idx], 1)
                         pelt_idx +=1
-                        pelt_wait=pelt_wait + pelt_wait_schedule[pwc]
+                    else:
+                        if pelt_time >= pelt_wait_schedule[ptc]:
+                            peltier_temp(pelt_temp_list[pelt_idx], 1)
+                            pelt_idx +=1
+                            pelt_time = 0
+                            ptc += 1
+                    
 
                     
                     for i in range(samples):
@@ -702,6 +767,8 @@ if timelapse==1:
                             hours, mins = divmod(mins, 60)
                             print(f"\rTime until next cycle: {hours:02}:{mins:02}:{secs:02}", end="")
                             time.sleep(1)
+                            
+                        print("\rTime until next cycle: 00:00:00")
 
                         print("\nImaging")
                     
@@ -729,6 +796,8 @@ if timelapse==1:
                                 hours, mins = divmod(mins, 60)
                                 print(f"\rTime until next cycle: {hours:02}:{mins:02}:{secs:02}", end="")
                                 time.sleep(1)
+                                
+                            print("\rTime until next cycle: 00:00:00")
 
                             print("\nImaging")
 
@@ -747,9 +816,6 @@ if timelapse==1:
                 else:
                     current_timestamp=np.round((current_timestamp+(interval[interval_count]*60))).astype(int)
                 
-                #print(iteration)
-                #print(interval_count)
-                counter+=1
                 index=0
 
                 start_time=time.time() # start of when imaging takes place
@@ -795,6 +861,8 @@ if timelapse==1:
                         hours, mins = divmod(mins, 60)
                         print(f"\rTime until next cycle: {hours:02}:{mins:02}:{secs:02}", end="")
                         time.sleep(1)
+                        
+                    print("\rTime until next cycle: 00:00:00")
 
                     print("\nImaging")
                 else:
@@ -821,6 +889,8 @@ if timelapse==1:
                                 hours, mins = divmod(mins, 60)
                                 print(f"\rTime until next cycle: {hours:02}:{mins:02}:{secs:02}", end="")
                                 time.sleep(1)
+                                
+                            print("\rTime until next cycle: 00:00:00")
 
                             print("\nImaging")
 
@@ -830,7 +900,7 @@ if timelapse==1:
 
 else: 
     if peltier ==1:
-        peltier_temp(pelt_temp_list[0],0) #  only looks at 1st temperature in list as ramp is unnecessary
+        peltier_temp(pelt_temp_list[0],1) #  only looks at 1st temperature in list as ramp is unnecessary
         index=0
         for i in range(samples):
 
@@ -871,41 +941,56 @@ for sample_idx in range(len(sample_names)):
     frame_sequence = []
     frame_seq_id = 1
 
+    if z_stack == 1:
 
-    if z_c_order == 'zc':
+        if z_c_order == 'zc':
 
-        
-            for num in range(1, number[sample_idx - 1] + 1):
-                for zi in range (-z_range, z_range+1,z_step):
+            
+                for num in range(1, number[sample_idx - 1] + 1):
+                    for zi in range (-z_range, z_range+1,z_step):
+                        for il in range(len(illumination)):
+                            frame_sequence.append({
+                                "frame": frame_seq_id,
+                                "sample": sample_names[sample_idx],
+                                "number": num,
+                                "z": zi,
+                                "illum_wavelength": illumination[il],
+                                "illum_exposure_time": illum_expose[il],
+                                "illum_pwr": laser_pwr[il]
+                            })
+                            frame_seq_id += 1
+
+        elif z_c_order == 'cz':
+
+
+                for num in range(1, number[sample_idx - 1] + 1):
                     for il in range(len(illumination)):
-                        frame_sequence.append({
-                            "frame": frame_seq_id,
-                            "sample": sample_names[sample_idx],
-                            "number": num,
-                            "z": zi,
-                            "illum_wavelength": illumination[il],
-                            "illum_exposure_time": illum_expose[il],
-                            "illum_pwr": laser_pwr[il]
-                        })
-                        frame_seq_id += 1
+                        for zi in range (-z_range, z_range+1,z_step):                
+                            frame_sequence.append({
+                                "frame": frame_seq_id,
+                                "sample": sample_names[sample_idx],
+                                "number": num,
+                                "z": zi,
+                                "illum_wavelength": illumination[il],
+                                "illum_exposure_time": illum_expose[il],
+                                "illum_pwr": laser_pwr[il]
+                            })
 
-    elif z_c_order == 'cz':
+                            frame_seq_id += 1
+    elif z_stack == 0:
+        for num in range(1, number[sample_idx - 1] + 1):
+            for il in range(len(illumination)):              
+                frame_sequence.append({
+                    "frame": frame_seq_id,
+                    "sample": sample_names[sample_idx],
+                    "number": num,
+                    "z": 1,
+                    "illum_wavelength": illumination[il],
+                    "illum_exposure_time": illum_expose[il],
+                    "illum_pwr": laser_pwr[il]
+                })
 
-
-            for num in range(1, number[sample_idx - 1] + 1):
-                for il in range(len(illumination)):
-                    for zi in range (-z_range, z_range+1,z_step):                
-                        frame_sequence.append({
-                            "frame": frame_seq_id,
-                            "sample": sample_names[sample_idx],
-                            "number": num,
-                            "z": zi,
-                            "illum_wavelength": illumination[il],
-                            "illum_exposure_time": illum_expose[il],
-                            "illum_pwr": laser_pwr[il]
-                        })
-
-                        frame_seq_id += 1
+                frame_seq_id += 1
 
     csv_file = f"{main_folder}/frame_mapping_{sample_idx}.csv"
     with open(csv_file, mode="w", newline="") as file:
