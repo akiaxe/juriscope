@@ -22,6 +22,7 @@ sample_names=['no enzyme','w enzyme']
 z_stack=1# Say if a z stack is being used; 1=yes, 0= not
 timelapse=1 # say if you want time lapse on; 1=yes, 0= not
 
+auto_focus=1 # Say if you want autofocus ON or OFF
 
 
 z_c_order='zc'  # zc -  Does all channels in each z first before moving to the next z value -- should be more precise
@@ -287,10 +288,15 @@ def script_print_move(vec):
         script_send_command("\t\t\t<wait_moving_end></wait_moving_end>\n", True)
         script_send_command("\t\t</stepper>\n\n", False)
 
-    script_send_command("\t\t<afocus>\n", False)
-    script_send_command("\t\t\t<enable>ON</enable>\n", True)
-    script_send_command("\t\t\t<wait_lock>0.2 10.3</wait_lock>\n", True) 
-    script_send_command("\t\t</afocus>\n", False)
+    if auto_focus==1:
+        script_send_command("\t\t<afocus>\n", False)
+        script_send_command("\t\t\t<enable>ON</enable>\n", True)
+        script_send_command("\t\t\t<wait_lock>0.2 10.3</wait_lock>\n", True) 
+        script_send_command("\t\t</afocus>\n", False)
+    elif auto_focus==0:
+        script_send_command("\t\t<afocus>\n", False)
+        script_send_command("\t\t\t<enable>OFF</enable>\n", True)
+        script_send_command("\t\t</afocus>\n", False)
 
     script_send_command("\t</microscopeone>\n", False)
 
@@ -593,6 +599,8 @@ print(f'Check all settings')
 print(f'Save folder: {main_folder}')
 
 print(f'Sample names: {sample_names}')
+
+print(f'Auto focus: {'ON' if auto_focus else 'OFF'}')
 
 print(f'Channels and order: {', '.join(illumination_names)}')
 print(f'Illumination Power: {laser_pwr}')
@@ -952,7 +960,7 @@ for sample_idx in range(len(sample_names)):
         if z_c_order == 'zc':
 
             
-                for num in range(1, number[sample_idx - 1] + 1):
+                for num in range(1, number[sample_idx] + 1):
                     for zi in range (-z_range, z_range+1,z_step):
                         for il in range(len(illumination)):
                             frame_sequence.append({
@@ -969,7 +977,7 @@ for sample_idx in range(len(sample_names)):
         elif z_c_order == 'cz':
 
 
-                for num in range(1, number[sample_idx - 1] + 1):
+                for num in range(1, number[sample_idx] + 1):
                     for il in range(len(illumination)):
                         for zi in range (-z_range, z_range+1,z_step):                
                             frame_sequence.append({
@@ -984,7 +992,7 @@ for sample_idx in range(len(sample_names)):
 
                             frame_seq_id += 1
     elif z_stack == 0:
-        for num in range(1, number[sample_idx - 1] + 1):
+        for num in range(1, number[sample_idx] + 1):
             for il in range(len(illumination)):              
                 frame_sequence.append({
                     "frame": frame_seq_id,
