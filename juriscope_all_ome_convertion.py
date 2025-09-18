@@ -417,7 +417,7 @@ def script_print_sample(filename, positions, number):
                 script_print_move(pos_vec) # moves to the given vector
 
                 
-                for step in range (-z_range, z_range+1,z_step):
+                for step in np.arange(-z_range,z_range +z_step,z_step):
                     script_print_move_z_move(pos_vec[2]+step)
 
                     for illum, exp, laser in zip(
@@ -464,7 +464,7 @@ def script_print_sample(filename, positions, number):
 
                     
                     
-                    for step in range (-z_range, z_range+1,z_step):
+                    for step in np.arange(-z_range,z_range +z_step,z_step):
                         script_print_move_z_move(pos_vec[2]+step)
 
                         #records the data given the illumination and exposure time
