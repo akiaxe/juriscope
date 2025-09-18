@@ -430,11 +430,12 @@ def script_print_sample(filename, positions, number):
                         script_send_command("\t\t</illumination>\n", False)
                         script_send_command("\t</microscopeone>\n", False)
 
+                        if timelapse ==1: 
 
-                        image_time=time.time()
-                        timestamp_time=(image_time-overall_start_time) / 60
+                            image_time=time.time()
+                            timestamp_time=(image_time-overall_start_time) / 60
 
-                        timestamp.append(timestamp_time)
+                            timestamp.append(timestamp_time)
 
             elif z_c_order=='cz':
 
@@ -470,12 +471,14 @@ def script_print_sample(filename, positions, number):
                         script_send_command("\t\t</illumination>\n", False)
                         script_send_command("\t</microscopeone>\n", False)
 
-                        image_time=time.time()
-                        timestamp_time=(image_time-overall_start_time) / 60
+                        if timelapse==1:
 
-                        timestamp.append(timestamp_time)
-                    
-                    
+                            image_time=time.time()
+                            timestamp_time=(image_time-overall_start_time) / 60
+
+                            timestamp.append(timestamp_time)
+                        
+                        
 
         else:
                 vec = positions[i]
@@ -499,11 +502,13 @@ def script_print_sample(filename, positions, number):
                     script_send_command("\t\t</illumination>\n", False)
                     script_send_command("\t</microscopeone>\n", False)
 
-                    image_time=time.time()
-                    timestamp_time=(image_time-overall_start_time) / 60
+                    if timelapse ==1:
 
-                    timestamp.append(timestamp_time)
-                    
+                        image_time=time.time()
+                        timestamp_time=(image_time-overall_start_time) / 60
+
+                        timestamp.append(timestamp_time)
+                        
     # Stop the recording for this range of values
     script_send_command("\t<!-- Stop recording. -->\n", False)
     script_send_command(f'\t<camera name="{camera_name}">\n', False)
@@ -610,14 +615,14 @@ if peltier==1:
     
     print(f'Pelt temp array = {pelt_temp_list}')
     print(f'Cut-off temperatures for waiting are: {pelt_time_temp_threshold}')
-    print(f'Interval time per cutt-off temperature range: {pelt_wait_time}')
+    print(f'Interval time per cut-off temperature range: {pelt_wait_time}')
     
     print(f'Heating time to reach 1st temperature: {pelt_initial_heat_time}s')
 
 if enclosure_heating==1:
     print(f'Enclosure temp = {temperature_enclosure}')
 
-print(f'timelapse = : {'Yes' if timelapse else 'No'}"')
+print(f'timelapse = : {'Yes' if timelapse else 'No'}')
 
 if timelapse==1:
     print(f'time interval (mins) = {interval}')
