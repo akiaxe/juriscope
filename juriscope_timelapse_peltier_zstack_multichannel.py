@@ -100,6 +100,11 @@ laser_pwr=[1,1,1,1] # change depending on the laser power wanted, between 0 and 
 
 os.makedirs(main_folder, exist_ok=True)  # creates dircetory if missing
 
+movie_output_path=f'{main_folder}/movies'
+
+os.makedirs(movie_output_path, exist_ok=True)  # creates dircetory if missing
+
+
 #assign cama name
 
 if objective==20:
@@ -379,7 +384,7 @@ def script_print_sample(filename, positions, number):
     #script_send_command("\t<!-- Start recording. -->\n", False)
     script_send_command("\t<save>\n", False)
     script_send_command(f"\t\t<header>\n{filename}\nNumber of positions {number}.\n\t\t</header>\n", True)
-    script_send_command(f"\t\t<basename>{main_folder}/{filename}</basename>\n", True) # This is the file_location
+    script_send_command(f"\t\t<basename>{movie_output_path}/{filename}</basename>\n", True) # This is the file_location
     script_send_command("\t\t<append>DATE</append>\n", True)
     script_send_command("\t</save>\n", False)
 
@@ -720,7 +725,7 @@ if timelapse==1:
 
                     if not (interval_count == 0 and iteration == 0):
                         current_timestamp = int(round(current_timestamp + interval[interval_count] * 60))
-                        pelt_time = int(round(pelt_time + interval[interval_count] * 60))
+                        pelt_time = int(round(pelt_time + interval[interval_count]))
                         
                     index=0
 
