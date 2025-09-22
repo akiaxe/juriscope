@@ -85,7 +85,7 @@ pelt_wait_time=[4200,30,10,5] # wait time for peltier in minutes.
 
 
 illumination=[0x01,0x40,0x20,0x80] # change depending on which channel is being used
-illum_expose=[10000, 100000, 100000, 100000] # change depending on exposure time for each channel
+illum_expose=[80000, 200000, 100000, 100000] # change depending on exposure time for each channel
 laser_pwr=[1,1,1,1] # change depending on the laser power wanted, between 0 and 1
 
 ##Specify illumination setting
@@ -107,6 +107,11 @@ laser_pwr=[1,1,1,1] # change depending on the laser power wanted, between 0 and 
 #################################### Initialisation
 
 os.makedirs(main_folder, exist_ok=True)  # creates dircetory if missing
+
+
+movie_output_path=f'{main_folder}/movies'
+
+os.makedirs(movie_output_path, exist_ok=True)  # creates dircetory if missing
 
 #assign cama name
 
@@ -387,7 +392,7 @@ def script_print_sample(filename, positions, number):
     #script_send_command("\t<!-- Start recording. -->\n", False)
     script_send_command("\t<save>\n", False)
     script_send_command(f"\t\t<header>\n{filename}\nNumber of positions {number}.\n\t\t</header>\n", True)
-    script_send_command(f"\t\t<basename>{main_folder}/{filename}</basename>\n", True) # This is the file_location
+    script_send_command(f"\t\t<basename>{movie_output_path}/{filename}</basename>\n", True) # This is the file_location
     script_send_command("\t\t<append>DATE</append>\n", True)
     script_send_command("\t</save>\n", False)
 
@@ -728,7 +733,7 @@ if timelapse==1:
 
                     if not (interval_count == 0 and iteration == 0):
                         current_timestamp = int(round(current_timestamp + interval[interval_count] * 60))
-                        pelt_time = int(round(pelt_time + interval[interval_count] * 60))
+                        pelt_time = int(round(pelt_time + interval[interval_count]))
                         
                     index=0
 
@@ -1036,7 +1041,7 @@ print(f"timestamp export complete")
 
 ######################## Variables to edit
 
-movie_folder_path=main_folder
+movie_folder_path=movie_output_path
 
 
 output_path=f'{main_folder}/tiffs'
@@ -1292,7 +1297,7 @@ all_data = []  # This will hold multiple instances of data
 for sample_idx in range(len(sample_names)):
      
      # Open the CSV file
-    with open(f"{movie_folder_path}/frame_mapping_{sample_idx}.csv", mode='r', newline='') as file:
+    with open(f"{main_folder}/frame_mapping_{sample_idx}.csv", mode='r', newline='') as file:
         reader = csv.DictReader(file)
         data = [row for row in reader]  # Each row is a dictionary
         all_data.append(data)  # Store this instance of data
