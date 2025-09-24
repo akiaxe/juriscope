@@ -223,25 +223,25 @@ def script_get_position():
     script_send_command(b'<microscopeone>', False) # sends command to open <microscopeone>
 
     # sends command to find get the stepper axis and 
-    script_send_command(b'<stepper axis="x">', True) 
-    reply = script_send_command(b'<status></status>', True)# gives the returned value
-    script_send_command(b'</stepper>', False)
+    reply = script_send_command(b'<stepper axis="x"><status></status></stepper>', True) 
+    #reply = script_send_command(b'<status></status>', True)# gives the returned value
+    #script_send_command(b'</stepper>', False)
     x = float(reply.split()[3]) # receives the data anbd splits it where there is a whitespace and and takes the 4th word. In this case it is the x value
     
     # process repeated for y,z and apprature
-    script_send_command(b'<stepper axis="y">', True)
-    reply = script_send_command(b'<status></status>', True)
-    script_send_command(b'</stepper>', False)
+    reply = script_send_command(b'<stepper axis="y"><status></status></stepper>', True) 
+    #reply = script_send_command(b'<status></status>', True)
+    #script_send_command(b'</stepper>', False)
     y = float(reply.split()[3])
 
-    script_send_command(b'<stepper axis="z">', True)
-    reply = script_send_command(b'<status></status>', True)
-    script_send_command(b'</stepper>', False)
+    reply = script_send_command(b'<stepper axis="z"><status></status></stepper>', True) 
+    #reply = script_send_command(b'<status></status>', True)
+    #script_send_command(b'</stepper>', False)
     z = float(reply.split()[3])
 
-    script_send_command(b'<stepper axis="a">', True)  # PFS offset value (aka autofocus on jurijscope)
-    reply = script_send_command(b'<status></status>', True)
-    script_send_command(b'</stepper>', False)
+    reply = script_send_command(b'<stepper axis="a"><status></status></stepper>', True)   # PFS offset value (aka autofocus on jurijscope)
+    #reply = script_send_command(b'<status></status>', True)
+    #script_send_command(b'</stepper>', False)
     a = float(reply.split()[3])
 
     script_send_command(b'</microscopeone>', False)
@@ -413,9 +413,11 @@ def script_print_sample(filename, positions, number):
                 pos_vec=positions[i] # select vector in position i
                 script_print_move(pos_vec) # moves to the given vector
 
+                new_vec=script_get_position()
+
                 
                 for step in np.arange(-z_range,z_range +z_step,z_step):
-                    script_print_move_z_move(pos_vec[2]+step)
+                    script_print_move_z_move(new_vec[2]+step)
 
                     for illum, exp, laser in zip(
                         illumination,
@@ -453,6 +455,8 @@ def script_print_sample(filename, positions, number):
                 pos_vec=positions[i] # select vector in position i
                 script_print_move(pos_vec) # moves to the given vector
 
+                new_vec=script_get_position()
+
                 for illum, exp, laser in zip(
                         illumination,
                         illum_expose,
@@ -462,7 +466,7 @@ def script_print_sample(filename, positions, number):
                     
                     
                     for step in np.arange(-z_range,z_range +z_step,z_step):
-                        script_print_move_z_move(pos_vec[2]+step)
+                        script_print_move_z_move(new_vec[2]+step)
 
                         #records the data given the illumination and exposure time
                         script_send_command("\t<microscopeone>\n", False)
