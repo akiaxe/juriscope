@@ -1,4 +1,5 @@
 import socket
+import datetime
 from datetime import timedelta
 import numpy as np
 import time
@@ -149,6 +150,18 @@ illumination_map = {
     0x80: "625 nm (Fluo)",
 }
 
+# Channel mapping laser power
+illumination_val = {
+    0x01: "0",
+    0x02: "1",
+    0x04: "2",
+    0x08: "3",
+    0x10: "4",
+    0x20: "5",
+    0x40: "6",
+    0x80: "7",
+}
+
 # Translate hex values into wavelengths
 illumination_names = [illumination_map[val] for val in illumination]
 
@@ -166,6 +179,7 @@ sock.settimeout(120.) #timeout for connection is set at 1 second
 reply = sock.recv(1024)
 
 
+new_pos_save_vec=[]
 
 
 
@@ -218,30 +232,84 @@ def script_send_command(command, reply_wait, terminator=b'\n\r', max_wait=120):
         time.sleep(0.1)
 
 
+def wait_for_stepper_status(axis: str) -> str:
+    """
+    Waits for the stepper axis and status replies for the given axis,
+    then returns the reply string once it's valid and contains a truthy float.
+    
+    Args:
+        axis (str): The axis to query, e.g. 'x', 'y', or 'z'.
+    
+    Returns:
+        str: The decoded status reply.
+    """
+
+    axis_command = f'<stepper axis="{axis}"></stepper>'.encode('utf-8')
+    expected_axis_reply = f'MICROSCOPEONE STEPPER axis="{axis}"'
+
+    # Step 1: Wait for correct axis reply
+    while True:
+        reply = script_send_command(axis_command, True)
+
+        decoded_reply = reply.decode('utf-8').strip()
+
+
+
+        if decoded_reply == expected_axis_reply:
+            break
+
+
+    # Send stepper axis command without expecting immediate reply
+    script_send_command(f'<stepper axis="{axis}">'.encode('utf-8'), False)
+
+    # Step 2: Wait for valid status reply
+    while True:
+        reply = script_send_command(b'<status></status>', True)
+
+
+        decoded_reply = reply.decode('utf-8').strip()
+        words = decoded_reply.split()
+
+        if len(words) >= 4 and words[0] == 'MICROSCOPEONE' and words[1] == 'STEPPER' and words[2] == 'status':
+            try:
+                value = float(words[3])
+                if value:
+                    break
+            except ValueError:
+                # Handle the case where words[3] isn't a valid float
+                pass
+
+
+
+    # Send closing stepper tag
+    script_send_command(b'</stepper>', False)
+
+    # Return the full decoded reply for further processing
+    return decoded_reply
+
+
 # Function to get gets the current x, y, z, and a stepper motor positions from the microscope
 def script_get_position():
     script_send_command(b'<microscopeone>', False) # sends command to open <microscopeone>
 
-    # sends command to find get the stepper axis and 
-    reply = script_send_command(b'<stepper axis="x"><status></status></stepper>', True) 
-    #reply = script_send_command(b'<status></status>', True)# gives the returned value
-    #script_send_command(b'</stepper>', False)
+
+    reply = wait_for_stepper_status('x')
+
+    
     x = float(reply.split()[3]) # receives the data anbd splits it where there is a whitespace and and takes the 4th word. In this case it is the x value
     
+    
     # process repeated for y,z and apprature
-    reply = script_send_command(b'<stepper axis="y"><status></status></stepper>', True) 
-    #reply = script_send_command(b'<status></status>', True)
-    #script_send_command(b'</stepper>', False)
+    reply = wait_for_stepper_status('y')
+
     y = float(reply.split()[3])
 
-    reply = script_send_command(b'<stepper axis="z"><status></status></stepper>', True) 
-    #reply = script_send_command(b'<status></status>', True)
-    #script_send_command(b'</stepper>', False)
+    reply = wait_for_stepper_status('z')
+
     z = float(reply.split()[3])
 
-    reply = script_send_command(b'<stepper axis="a"><status></status></stepper>', True)   # PFS offset value (aka autofocus on jurijscope)
-    #reply = script_send_command(b'<status></status>', True)
-    #script_send_command(b'</stepper>', False)
+    reply = wait_for_stepper_status('a')
+
     a = float(reply.split()[3])
 
     script_send_command(b'</microscopeone>', False)
@@ -378,6 +446,8 @@ def script_print_move_z_move(step):
 
 ### Main function which enables does the recording 
 def script_print_sample(filename, positions, number):
+
+    global new_pos_save_vec
     #Writes XML commands for imaging all positions in a capillary/well, including metadata, camera/microscope control, and image acquisition.
     #saves the metadata 
     #script_send_command("<!-- Image all positions in a capillary/well with z -->\n", False)
@@ -415,6 +485,10 @@ def script_print_sample(filename, positions, number):
 
                 new_vec=script_get_position()
 
+                new_vec_time=datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
+                new_pos_time=[new_vec_time]+new_vec
+                new_pos_save_vec.append(new_pos_time)
                 
                 for step in np.arange(-z_range,z_range +z_step,z_step):
                     script_print_move_z_move(new_vec[2]+step)
@@ -456,6 +530,11 @@ def script_print_sample(filename, positions, number):
                 script_print_move(pos_vec) # moves to the given vector
 
                 new_vec=script_get_position()
+
+                new_vec_time=datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
+                new_pos_time=[new_vec_time]+new_vec
+                new_pos_save_vec.append(new_pos_time)
 
                 for illum, exp, laser in zip(
                         illumination,
@@ -623,7 +702,7 @@ if z_stack==1:
     
     print(f'zc order: {z_c_order}')
 
-print(f'Peltier = : {'Yes' if peltier else 'No'}"')
+print(f'Peltier = : {'Yes' if peltier else 'No'}')
 
 if peltier==1:
     print(f'Pelt start temp = {pelt_start_temp}')
@@ -1031,5 +1110,11 @@ with open(f"{main_folder}/timestamp.csv", mode="w", newline="") as file:
 
 print(f"timestamp export complete")
 
+with open(f"{main_folder}/pos.csv", "w", newline="") as csvfile:
+    writer = csv.writer(csvfile)
+    writer.writerow(["Timestamp", "x", "y", "z","a"])  # Add headers if needed
+    writer.writerows(new_pos_save_vec)
+
+print(f"z vec export complete")
 
 
