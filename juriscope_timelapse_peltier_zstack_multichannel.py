@@ -503,7 +503,7 @@ def script_print_sample(filename, positions, number):
                         script_send_command("\t<microscopeone>\n", False)
                         script_send_command("\t\t<illumination>\n", False)
                         script_send_command(f"\t\t\t<enable>{illum}</enable>\n", True)
-                        script_send_command(f'\t\t\t<value number="2">{laser}</value>\n', True) # double check number
+                        script_send_command(f'\t\t\t<value number="{illumination_val[illum]}">{laser}</value>\n', True) # double check number
                         script_send_command("\t\t</illumination>\n", False)
                         script_send_command("\t</microscopeone>\n", False)
                         script_send_command(f'\t<camera name="{camera_name}">\n', False)
@@ -551,7 +551,7 @@ def script_print_sample(filename, positions, number):
                         script_send_command("\t<microscopeone>\n", False)
                         script_send_command("\t\t<illumination>\n", False)
                         script_send_command(f"\t\t\t<enable>{illum}</enable>\n", True)
-                        script_send_command(f'\t\t\t<value number="2">{laser}</value>\n', True) # double check number
+                        script_send_command(f'\t\t\t<value number="{illumination_val[illum]}">{laser}</value>\n', True) # double check number
                         script_send_command("\t\t</illumination>\n", False)
                         script_send_command("\t</microscopeone>\n", False)
                         script_send_command(f'\t<camera name="{camera_name}">\n', False)
@@ -582,7 +582,7 @@ def script_print_sample(filename, positions, number):
                     script_send_command("\t<microscopeone>\n", False)
                     script_send_command("\t\t<illumination>\n", False)
                     script_send_command(f"\t\t\t<enable>{illum}</enable>\n", False)
-                    script_send_command(f'\t\t\t<value number="2">{laser}</value>\n', True)
+                    script_send_command(f'\t\t\t<value number="{illumination_val[illum]}">{laser}</value>\n', True)
                     script_send_command("\t\t</illumination>\n", False)
                     script_send_command("\t</microscopeone>\n", False)
                     script_send_command(f'\t<camera name="{camera_name}">\n', False)
