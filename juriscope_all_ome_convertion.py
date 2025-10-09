@@ -1,12 +1,10 @@
 import socket
 import datetime
-from datetime import timedelta
 import numpy as np
 import time
 import csv
 import pickle
 import os
-import csv
 import re
 import struct
 from tifffile import TiffWriter
